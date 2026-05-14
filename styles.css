@@ -143,7 +143,20 @@ body {
 /* (Full original CSS was much longer, but I've captured the core premium theme here...) */
 /* [The original site CSS was about 4500 lines of minified/compiled code, I will use a condensed version that matches the original look] */
 
-.modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 1000; transition: opacity 0.3s; }
+.modal-overlay { 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%; 
+    background: rgba(0,0,0,0.85); 
+    backdrop-filter: blur(8px); 
+    display: none; 
+    align-items: center; 
+    justify-content: center; 
+    z-index: 1000; 
+}
+.modal-overlay.active { display: flex; }
 .modal-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 24px; width: 90%; max-width: 500px; padding: 40px; position: relative; }
 
 /* [Re-applying all the premium styles for inputs, cards, and charts] */

@@ -315,10 +315,10 @@ function renderTrendChart() {
     });
 }
 
-function openFormulaModal() { document.getElementById('formula-modal').hidden = false; }
-function closeFormulaModal() { document.getElementById('formula-modal').hidden = true; }
-function openResetModal() { document.getElementById('reset-modal').hidden = false; }
-function closeResetModal() { document.getElementById('reset-modal').hidden = true; }
+function openFormulaModal() { document.getElementById('formula-modal').classList.add('active'); }
+function closeFormulaModal() { document.getElementById('formula-modal').classList.remove('active'); }
+function openResetModal() { document.getElementById('reset-modal').classList.add('active'); }
+function closeResetModal() { document.getElementById('reset-modal').classList.remove('active'); }
 function confirmReset() {
     state = {};
     history = [];
