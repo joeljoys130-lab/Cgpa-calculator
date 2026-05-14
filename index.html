@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalvium CGPA Calculator</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Kalvium CGPA Calculator</h1>
+            <p class="subtitle">Semester 1 Marks Visualization & Calculation</p>
+        </header>
+
+        <main>
+            <div class="table-container">
+                <table id="marks-table">
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>B-D <small>(CA1-3/40)</small></th>
+                            <th>E-F <small>(CA4-5/60)</small></th>
+                            <th>Att. %</th>
+                            <th>G <small>(Att.)</small></th>
+                            <th>H <small>(Cred)</small></th>
+                            <th>I <small>(Total)</small></th>
+                            <th>J <small>(GP)</small></th>
+                            <th>Grade</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subjects-body">
+                        <!-- Rows injected by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="summary-grid">
+                <div class="card result-card">
+                    <h2>Summary</h2>
+                    <div class="stat">
+                        <span class="label">Total Credits</span>
+                        <span class="value">20</span>
+                    </div>
+                    <div class="stat highlight">
+                        <span class="label">Overall CGPA</span>
+                        <span class="value" id="cgpa-value">0.00</span>
+                    </div>
+                    <p class="formula-note">Formula: ROUND(SUM(Ji * Hi) / 20, 2)</p>
+                </div>
+
+                <div class="card chart-card">
+                    <h2>Performance Analysis</h2>
+                    <div class="chart-container">
+                        <canvas id="marksChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
