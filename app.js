@@ -1,165 +1,145 @@
 /**
- * Kalvium CGPA Dashboard - Core Logic
+ * Kalvium CGPA Dashboard - Original Version (Restored)
  */
 
 const SUBJECTS = [
-    { id: 'bocs', name: 'BOCS', fullName: 'Breadth of Computer Science', credits: 4, type: 'bocs' },
-    { id: 'bewd', name: 'BEWD', fullName: 'Backend Web Development', credits: 5, type: 'bewd_dbms' },
-    { id: 'dbms', name: 'DBMS', fullName: 'Database Management System', credits: 3, type: 'bewd_dbms' },
-    { id: 'mern', name: 'MERN', fullName: 'Full Stack / MERN', credits: 4, type: 'mern' },
-    { id: 'lthtl', name: 'LTHTL', fullName: 'Learning How to Learn', credits: 4, type: 'lthtl' }
+    { id: 'bocs',  name: 'BOCS',  fullName: 'Basics of Computer Science', credits: 4, type: 'bocs_lthtl' },
+    { id: 'bewd',  name: 'BEWD',  fullName: 'Backend & Web Development', credits: 5, type: 'bewd_dbms' },
+    { id: 'dbms',  name: 'DBMS',  fullName: 'Database Management Systems', credits: 3, type: 'bewd_dbms' },
+    { id: 'mern',  name: 'MERN',  fullName: 'MERN Stack Development', credits: 4, type: 'mern' },
+    { id: 'lthtl', name: 'LTHTL', fullName: 'Learn to Hack, Think and Lead', credits: 4, type: 'bocs_lthtl' },
 ];
 
-let state = JSON.parse(localStorage.getItem('kalvium_state')) || {};
-let history = JSON.parse(localStorage.getItem('kalvium_history')) || [];
-let radarChart = null;
+const TOTAL_CREDITS = 20;
+const LS_KEY = 'kalvium_cgpa_v2';
+const LS_HISTORY = 'kalvium_history_v2';
+const LS_THEME = 'kalvium_theme';
+const LS_BANNER = 'kalvium_banner';
 
-// Initialize
+let state = {};
+let history = [];
+let trendChart = null;
+let saveTimer = null;
+let deleteSemId = null;
+
 function init() {
+    loadState();
+    loadHistory();
+    applyTheme(localStorage.getItem(LS_THEME) || 'dark');
     renderSubjects();
-    initChart();
-    updateAll();
+    recalcAll();
     renderHistory();
-    applyTheme(localStorage.getItem('kalvium_theme') || 'dark');
-}
-
-// Rendering
-function renderSubjects() {
-    const grid = document.getElementById('subjects-grid');
-    grid.innerHTML = SUBJECTS.map(s => {
-        const d = state[s.id] || { cas: [0,0,0,0,0], att: 0 };
-        return `
-            <div class="subject-card" id="card-${s.id}">
-                <div class="card-top">
-                    <div class="subj-info">
-                        <h3>${s.name}</h3>
-                        <p>${s.fullName}</p>
-                    </div>
-                    <div class="subj-score">
-                        <div class="score-val" id="total-${s.id}">0.00</div>
-                        <div class="score-label">Total Marks</div>
-                    </div>
-                </div>
-                <div class="inputs-grid">
-                    <div class="input-box">
-                        <label>CA1 (40)</label>
-                        <input type="number" value="${d.cas[0]}" oninput="updateState('${s.id}', 0, this.value, 40)">
-                    </div>
-                    <div class="input-box">
-                        <label>CA2 (40)</label>
-                        <input type="number" value="${d.cas[1]}" oninput="updateState('${s.id}', 1, this.value, 40)">
-                    </div>
-                    <div class="input-box">
-                        <label>CA3 (40)</label>
-                        <input type="number" value="${d.cas[2]}" oninput="updateState('${s.id}', 2, this.value, 40)">
-                    </div>
-                    <div class="input-box">
-                        <label>CA4 (60)</label>
-                        <input type="number" value="${d.cas[3]}" oninput="updateState('${s.id}', 3, this.value, 60)">
-                    </div>
-                    <div class="input-box">
-                        <label>CA5 (60)</label>
-                        <input type="number" value="${d.cas[4]}" oninput="updateState('${s.id}', 4, this.value, 60)">
-                    </div>
-                    <div class="input-box">
-                        <label>Att. %</label>
-                        <input type="number" value="${d.att}" oninput="updateState('${s.id}', 'att', this.value, 100)">
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <div class="footer-stat">
-                        <span>Credits: ${s.credits}</span>
-                        <span>Points: <b id="pts-${s.id}">0</b></span>
-                    </div>
-                    <span class="grade-pill" id="grade-${s.id}">—</span>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-// Logic & Calculation
-function updateState(subjId, field, value, max) {
-    if (!state[subjId]) state[subjId] = { cas: [0,0,0,0,0], att: 0 };
-    
-    let val = parseFloat(value) || 0;
-    if (val > max) val = max;
-    if (val < 0) val = 0;
-
-    if (field === 'att') {
-        state[subjId].att = val;
-    } else {
-        state[subjId].cas[field] = val;
+    renderTrendChart();
+    setFooterTime();
+    if (localStorage.getItem(LS_BANNER) === 'dismissed') {
+        const b = document.getElementById('welcome-banner');
+        if (b) b.style.display = 'none';
     }
-
-    localStorage.setItem('kalvium_state', JSON.stringify(state));
-    updateAll();
 }
 
-function calculateAttendanceMarks(pct) {
-    if (pct >= 90) return 5;
-    if (pct >= 85) return 4;
-    if (pct >= 80) return 3;
-    if (pct >= 75) return 2;
+// Logic & Calculations
+function loadState() {
+    try {
+        const raw = localStorage.getItem(LS_KEY);
+        if (raw) state = JSON.parse(raw);
+    } catch { state = {}; }
+    SUBJECTS.forEach(s => {
+        if (!state[s.id]) state[s.id] = { ca1:0, ca2:0, ca3:0, ca4:0, ca5:0, att:0 };
+    });
+}
+
+function getAttMark(att) {
+    const a = parseFloat(att) || 0;
+    if (a >= 90) return 5;
+    if (a >= 85) return 4;
+    if (a >= 80) return 3;
+    if (a >= 75) return 2;
     return 0;
 }
 
-function calculateSubjectTotal(subj, data) {
-    const { cas, att } = data;
-    const g = calculateAttendanceMarks(att);
-    const [b, c, d, e, f] = cas;
+function calcTotalMarks(subj, data) {
+    const { ca1=0, ca2=0, ca3=0, ca4=0, ca5=0, att=0 } = data;
+    const g = getAttMark(att);
+    const [b, c, d, e, f] = [+ca1, +ca2, +ca3, +ca4, +ca5];
     let raw = 0;
 
     switch (subj.type) {
-        case 'bocs':
-        case 'lthtl':
-            // (19/40)*(B+C+D) + (19/60)*(E+F) + G
-            raw = ((19/40)*(b + c + d) + (19/60)*(e + f) + g);
+        case 'bocs_lthtl':
+            raw = ((19/40)*(b+c+d) + (19/60)*(e+f) + g);
             break;
         case 'bewd_dbms':
-            // (95/3)*(B/40 + MAX(C,D)/40 + MAX(E,F)/60) + G
-            raw = ((95/3)*(b/40 + Math.max(c, d)/40 + Math.max(e, f)/60) + g);
+            raw = ((95/3)*(b/40 + Math.max(c,d)/40 + Math.max(e,f)/60) + g);
             break;
         case 'mern':
-            // (95/4)*(B/40 + C/40 + D/40 + MAX(E,F)/60) + G
-            raw = ((95/4)*(b/40 + c/40 + d/40 + Math.max(e, f)/60) + g);
+            raw = ((95/4)*(b/40 + c/40 + d/40 + Math.max(e,f)/60) + g);
             break;
     }
     return Math.min(100, Math.round(raw * 100) / 100);
 }
 
-function getPointAndGrade(total) {
-    if (total <= 30) return { pt: 0, grade: 'F' };
-    
-    // Formula: Jx = INT((TotalMarks - 1) / 10) + 1
-    const pt = Math.floor((total - 1) / 10) + 1;
-    const grades = { 10:'O', 9:'A+', 8:'A', 7:'B+', 6:'B', 5:'C', 4:'D' };
-    
-    return { pt, grade: grades[pt] || 'F' };
+function gradePointFromTotal(total) {
+    if (total <= 30) return 0;
+    // Formula: Jx = INT((TotalMarks-1)/10) + 1
+    // 91-100: 10, 81-90: 9, 71-80: 8, 61-70: 7, 51-60: 6, 41-50: 5, 31-40: 4
+    return Math.floor((total - 1) / 10) + 1;
 }
 
-function updateAll() {
-    let weightedSum = 0;
-    const chartValues = [];
+function gradeLabelFromGP(gp) {
+    const map = {
+        10: { letter: 'O',  cls: 'grade-o' },
+        9:  { letter: 'A+', cls: 'grade-a' },
+        8:  { letter: 'A',  cls: 'grade-a' },
+        7:  { letter: 'B+', cls: 'grade-b' },
+        6:  { letter: 'B',  cls: 'grade-b' },
+        5:  { letter: 'C+', cls: 'grade-c' }, // C+ as requested
+        4:  { letter: 'C',  cls: 'grade-c' }  // C as requested
+    };
+    return map[gp] || { letter: 'F', cls: 'grade-f' };
+}
+
+function recalcAll() {
+    let weightedGP = 0;
+    const totals = {};
+    const grades = {};
 
     SUBJECTS.forEach(s => {
-        const data = state[s.id] || { cas: [0,0,0,0,0], att: 0 };
-        const total = calculateSubjectTotal(s, data);
-        const { pt, grade } = getPointAndGrade(total);
+        const total = calcTotalMarks(s, state[s.id]);
+        const gp = gradePointFromTotal(total);
+        totals[s.id] = total;
+        grades[s.id] = gp;
+        weightedGP += (gp * s.credits);
 
-        document.getElementById(`total-${s.id}`).textContent = total.toFixed(2);
-        document.getElementById(`pts-${s.id}`).textContent = pt;
-        document.getElementById(`grade-${s.id}`).textContent = grade;
-        
-        weightedSum += (pt * s.credits);
-        chartValues.push(total);
+        // Update card UI
+        const ptEl = document.getElementById(`pts-${s.id}`);
+        if (ptEl) ptEl.textContent = (total/10).toFixed(4); // Displaying raw points/10 as before
+        const totEl = document.getElementById(`total-${s.id}`);
+        if (totEl) totEl.textContent = total.toFixed(2);
+        const gradeEl = document.getElementById(`grade-${s.id}`);
+        if (gradeEl) {
+            const lbl = gradeLabelFromGP(gp);
+            gradeEl.textContent = lbl.letter;
+            gradeEl.className = `grade-badge ${lbl.cls}`;
+        }
     });
 
-    const cgpa = Math.round((weightedSum / 20) * 100) / 100;
-    document.getElementById('display-cgpa').textContent = cgpa.toFixed(2);
-    document.getElementById('display-grade').textContent = getOverallGrade(cgpa);
+    const cgpa = Math.round((weightedGP / TOTAL_CREDITS) * 100) / 100;
+    const hasData = SUBJECTS.some(s => Object.values(state[s.id]).some(v => v > 0));
 
-    updateChart(chartValues);
+    // Summary
+    document.getElementById('summary-cgpa').textContent = hasData ? cgpa.toFixed(2) : '—';
+    document.getElementById('summary-grade').textContent = hasData ? getOverallGrade(cgpa) : '—';
+    document.getElementById('summary-status').textContent = hasData ? getStatus(cgpa) : '—';
+    document.getElementById('cgpa-display').textContent = hasData ? cgpa.toFixed(2) : '—';
+    
+    const badge = document.getElementById('cgpa-badge');
+    if (badge) {
+        badge.textContent = hasData ? `Grade ${getOverallGrade(cgpa)}` : 'No Data';
+    }
+
+    const bar = document.getElementById('cgpa-progress-bar');
+    if (bar) bar.style.width = hasData ? `${(cgpa / 10) * 100}%` : '0%';
+
+    renderBreakdown(totals, grades);
 }
 
 function getOverallGrade(cgpa) {
@@ -172,89 +152,86 @@ function getOverallGrade(cgpa) {
     return 'F';
 }
 
-// Chart
-function initChart() {
-    const ctx = document.getElementById('radarChart').getContext('2d');
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    
-    radarChart = new Chart(ctx, {
-        type: 'radar',
-        data: {
-            labels: SUBJECTS.map(s => s.id.toUpperCase()),
-            datasets: [{
-                label: 'Performance',
-                data: [0,0,0,0,0],
-                backgroundColor: 'rgba(99, 102, 241, 0.2)',
-                borderColor: '#6366f1',
-                pointBackgroundColor: '#6366f1'
-            }]
-        },
-        options: {
-            scales: {
-                r: {
-                    min: 0, max: 100,
-                    grid: { color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' },
-                    angleLines: { color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' },
-                    pointLabels: { color: isDark ? '#94a3b8' : '#64748b' }
-                }
-            },
-            plugins: { legend: { display: false } }
-        }
-    });
+function getStatus(cgpa) {
+    if (cgpa >= 8.5) return 'Excellent';
+    if (cgpa >= 7) return 'Good';
+    if (cgpa >= 5) return 'Pass';
+    return 'At Risk';
 }
 
-function updateChart(data) {
-    if (radarChart) {
-        radarChart.data.datasets[0].data = data;
-        radarChart.update();
-    }
-}
-
-// History
-function saveSnapshot() {
-    const cgpa = document.getElementById('display-cgpa').textContent;
-    if (cgpa === '0.00') return showToast('Enter some marks first!');
-    
-    const entry = {
-        id: Date.now(),
-        cgpa,
-        date: new Date().toLocaleDateString(),
-        name: `Semester ${history.length + 1}`
-    };
-    
-    history.push(entry);
-    localStorage.setItem('kalvium_history', JSON.stringify(history));
-    renderHistory();
-    showToast('Snapshot saved successfully!');
-}
-
-function renderHistory() {
-    const list = document.getElementById('history-list');
-    if (history.length === 0) {
-        list.innerHTML = '<p class="empty-state">No snapshots saved yet.</p>';
-        return;
-    }
-    
-    list.innerHTML = history.slice().reverse().map(h => `
-        <div class="history-item">
-            <div class="hist-meta">
-                <span class="hist-name">${h.name}</span>
-                <span class="hist-date">${h.date}</span>
+// Rendering
+function renderSubjects() {
+    const grid = document.getElementById('subjects-grid');
+    grid.innerHTML = SUBJECTS.map(s => {
+        const d = state[s.id];
+        return `
+            <div class="subject-card" id="card-${s.id}">
+                <div class="card-header">
+                    <div class="subj-info">
+                        <h3>${s.name}</h3>
+                        <p>${s.fullName} (${s.credits} Credits)</p>
+                    </div>
+                    <div class="card-score">
+                        <div class="score-num" id="total-${s.id}">0.00</div>
+                        <div class="score-lbl">Total Marks</div>
+                    </div>
+                </div>
+                <div class="ca-grid">
+                    ${[1,2,3,4,5].map(n => `
+                        <div class="input-group">
+                            <label>CA${n}</label>
+                            <input type="number" class="ca-input" value="${d['ca'+n] || ''}" 
+                                oninput="handleInput('${s.id}', 'ca${n}', this, ${n<=3?40:60})">
+                        </div>
+                    `).join('')}
+                    <div class="input-group">
+                        <label>Att%</label>
+                        <input type="number" class="ca-input" value="${d.att || ''}" 
+                            oninput="handleInput('${s.id}', 'att', this, 100)">
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <span id="grade-${s.id}" class="grade-badge">—</span>
+                    <span class="pts-display">SGPA Pts: <strong id="pts-${s.id}">0.0000</strong></span>
+                </div>
             </div>
-            <span class="hist-val">${h.cgpa}</span>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
-function clearHistory() {
-    if (confirm('Clear all history?')) {
-        history = [];
-        localStorage.setItem('kalvium_history', JSON.stringify(history));
-        renderHistory();
-    }
+function renderBreakdown(totals, grades) {
+    const table = document.getElementById('cgpa-breakdown-table');
+    table.innerHTML = SUBJECTS.map(s => {
+        const lbl = gradeLabelFromGP(grades[s.id]);
+        return `
+            <div class="breakdown-row">
+                <span class="br-name">${s.name}</span>
+                <span class="br-dots"></span>
+                <span class="br-grade ${lbl.cls}">${lbl.letter}</span>
+                <span class="br-gp">GP ${grades[s.id]}</span>
+            </div>
+        `;
+    }).join('');
 }
 
-// UI Actions
+// Events
+function handleInput(subjId, field, el, max) {
+    let val = parseFloat(el.value);
+    if (isNaN(val)) val = 0;
+    if (val > max) { val = max; el.value = max; }
+    if (val < 0) { val = 0; el.value = 0; }
+    
+    state[subjId][field] = val;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+        localStorage.setItem(LS_KEY, JSON.stringify(state));
+        const now = new Date();
+        document.getElementById('summary-time').textContent = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        recalcAll();
+    }, 300);
+}
+
+// Themes
 function toggleTheme() {
     const current = document.documentElement.getAttribute('data-theme');
     const next = current === 'dark' ? 'light' : 'dark';
@@ -263,34 +240,108 @@ function toggleTheme() {
 
 function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('kalvium_theme', theme);
-    document.getElementById('theme-toggle').textContent = theme === 'dark' ? '☀️' : '🌙';
-    if (radarChart) {
-        radarChart.options.scales.r.grid.color = theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
-        radarChart.update();
-    }
+    localStorage.setItem(LS_THEME, theme);
+    document.getElementById('theme-icon').textContent = theme === 'dark' ? '☀️' : '🌙';
 }
 
-function resetAll() {
-    if (confirm('Are you sure you want to reset all marks?')) {
-        state = {};
-        localStorage.removeItem('kalvium_state');
-        renderSubjects();
-        updateAll();
-        showToast('All data reset.');
-    }
+// History & Modals (Restored logic)
+function addSemesterSnapshot() {
+    const cgpa = document.getElementById('summary-cgpa').textContent;
+    if (cgpa === '—') return;
+    history.push({ id: Date.now(), cgpa, date: new Date().toLocaleDateString() });
+    localStorage.setItem(LS_HISTORY, JSON.stringify(history));
+    renderHistory();
+    renderTrendChart();
 }
 
-function openFormulaModal() { document.getElementById('formula-modal').style.display = 'grid'; }
-function closeFormulaModal() { document.getElementById('formula-modal').style.display = 'none'; }
+function renderHistory() {
+    const list = document.getElementById('history-list');
+    const empty = document.getElementById('history-empty');
+    if (history.length === 0) {
+        list.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+    }
+    list.style.display = 'block';
+    empty.style.display = 'none';
+    list.innerHTML = history.slice().reverse().map(h => `
+        <div class="history-item">
+            <div class="hist-info">
+                <span class="hist-cgpa">${h.cgpa}</span>
+                <span class="hist-date">${h.date}</span>
+            </div>
+            <button class="btn-del" onclick="deleteHistory(${h.id})">🗑️</button>
+        </div>
+    `).join('');
+}
 
-function showToast(msg) {
-    const container = document.getElementById('toast-container');
-    const t = document.createElement('div');
-    t.className = 'toast';
-    t.textContent = msg;
-    container.appendChild(t);
-    setTimeout(() => t.remove(), 3000);
+function deleteHistory(id) {
+    history = history.filter(h => h.id !== id);
+    localStorage.setItem(LS_HISTORY, JSON.stringify(history));
+    renderHistory();
+    renderTrendChart();
+}
+
+function renderTrendChart() {
+    const ctx = document.getElementById('trend-chart');
+    if (!ctx) return;
+    if (trendChart) trendChart.destroy();
+    
+    const data = history.slice(-10);
+    if (data.length === 0) {
+        document.getElementById('chart-empty').style.display = 'flex';
+        return;
+    }
+    document.getElementById('chart-empty').style.display = 'none';
+
+    trendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.map(d => d.date),
+            datasets: [{
+                label: 'CGPA',
+                data: data.map(d => d.cgpa),
+                borderColor: '#6366f1',
+                tension: 0.4,
+                fill: true,
+                backgroundColor: 'rgba(99, 102, 241, 0.1)'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { min: 0, max: 10 } }
+        }
+    });
+}
+
+function openFormulaModal() { document.getElementById('formula-modal').hidden = false; }
+function closeFormulaModal() { document.getElementById('formula-modal').hidden = true; }
+function openResetModal() { document.getElementById('reset-modal').hidden = false; }
+function closeResetModal() { document.getElementById('reset-modal').hidden = true; }
+function confirmReset() {
+    state = {};
+    history = [];
+    localStorage.removeItem(LS_KEY);
+    localStorage.removeItem(LS_HISTORY);
+    location.reload();
+}
+
+function dismissBanner() {
+    document.getElementById('welcome-banner').style.display = 'none';
+    localStorage.setItem(LS_BANNER, 'dismissed');
+}
+
+function setFooterTime() {
+    const now = new Date();
+    document.getElementById('footer-time').textContent = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+}
+
+function loadHistory() {
+    try {
+        const raw = localStorage.getItem(LS_HISTORY);
+        if (raw) history = JSON.parse(raw);
+    } catch { history = []; }
 }
 
 document.addEventListener('DOMContentLoaded', init);

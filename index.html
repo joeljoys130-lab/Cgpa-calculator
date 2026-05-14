@@ -3,114 +3,231 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kalvium CGPA Dashboard</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Kalvium CGPA Calculator | Software Product Engineering</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <header class="app-header">
-        <div class="header-content container">
-            <div class="brand">
-                <div class="logo">K</div>
-                <div class="brand-text">
-                    <h1>Kalvium</h1>
-                    <span>CGPA Dashboard</span>
+        <div class="header-content">
+            <div class="header-brand">
+                <div class="brand-logo">K</div>
+                <div>
+                    <div class="brand-name">Kalvium</div>
+                    <div class="brand-sub">CGPA CALCULATOR</div>
                 </div>
             </div>
-            <nav class="header-actions">
-                <button id="theme-toggle" class="icon-btn" onclick="toggleTheme()" title="Toggle Theme">☀️</button>
-                <button class="btn btn-outline" onclick="openFormulaModal()">📐 Formulas</button>
-                <button class="btn btn-danger" onclick="resetAll()">🔄 Reset</button>
+            <nav class="header-nav">
+                <button class="btn btn-icon" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Theme" aria-label="Toggle dark/light mode">
+                    <span id="theme-icon">☀️</span>
+                </button>
+                <button class="btn btn-ghost btn-sm" onclick="openFormulaModal()" title="View Formulas">📐 Formulas</button>
+                <button class="btn btn-ghost btn-sm" onclick="exportData()" title="Export JSON">📤 Export</button>
+                <button class="btn btn-ghost btn-sm" onclick="openImportModal()" title="Import JSON">📥 Import</button>
+                <button class="btn btn-danger-outline btn-sm" onclick="openResetModal()" title="Reset All Data">🔄 Reset</button>
             </nav>
         </div>
     </header>
 
     <div class="sticky-summary">
-        <div class="container summary-inner">
-            <div class="stat-group">
-                <div class="stat">
-                    <span class="label">CGPA</span>
-                    <span id="display-cgpa" class="value">—</span>
-                </div>
-                <div class="divider"></div>
-                <div class="stat">
-                    <span class="label">Total Credits</span>
-                    <span class="value">20</span>
-                </div>
-                <div class="divider"></div>
-                <div class="stat">
-                    <span class="label">Grade</span>
-                    <span id="display-grade" class="value">—</span>
-                </div>
+        <div class="summary-inner">
+            <div class="summary-stat">
+                <span class="summary-label">CGPA</span>
+                <span class="summary-value cgpa-value" id="summary-cgpa">—</span>
             </div>
-            <button class="btn btn-primary" onclick="saveSnapshot()">💾 Save Snapshot</button>
+            <div class="summary-divider"></div>
+            <div class="summary-stat">
+                <span class="summary-label">Total Credits</span>
+                <span class="summary-value">20</span>
+            </div>
+            <div class="summary-divider"></div>
+            <div class="summary-stat">
+                <span class="summary-label">Grade</span>
+                <span class="summary-value" id="summary-grade">—</span>
+            </div>
+            <div class="summary-divider"></div>
+            <div class="summary-stat">
+                <span class="summary-label">Status</span>
+                <span class="summary-value" id="summary-status">—</span>
+            </div>
+            <div class="summary-divider"></div>
+            <div class="summary-stat">
+                <span class="summary-label">Last Saved</span>
+                <span class="summary-value summary-time" id="summary-time">Never</span>
+            </div>
         </div>
     </div>
 
-    <main class="container main-layout">
-        <section class="subjects-section">
-            <div class="section-header">
-                <h2>Subject Wise Performance</h2>
-                <p>Enter your CA marks and attendance percentage below.</p>
-            </div>
-            <div id="subjects-grid" class="subjects-grid">
-                <!-- Cards injected by JS -->
-            </div>
-        </section>
-
-        <aside class="sidebar">
-            <div class="card chart-card">
-                <h3>Marks Distribution</h3>
-                <div class="chart-wrapper">
-                    <canvas id="radarChart"></canvas>
+    <main class="main-content">
+        <div class="page-container">
+            <!-- Welcome Banner -->
+            <div class="welcome-banner" id="welcome-banner">
+                <div class="welcome-text">
+                    <h2>Welcome to your Academic Dashboard 🎓</h2>
+                    <p>Enter your marks and attendance below. Everything auto-saves and recalculates in real-time.</p>
                 </div>
+                <button class="welcome-dismiss" onclick="dismissBanner()" aria-label="Dismiss welcome banner">✕</button>
             </div>
 
-            <div class="card history-card">
-                <div class="card-header">
-                    <h3>Semester History</h3>
-                    <button class="btn-text" onclick="clearHistory()">Clear All</button>
+            <!-- Subject Inputs -->
+            <section class="subjects-section">
+                <div class="section-header">
+                    <h2 class="section-title">📖 Subject Grades</h2>
+                    <span class="section-subtitle">All changes auto-save to local storage</span>
                 </div>
-                <div id="history-list" class="history-list">
-                    <p class="empty-state">No snapshots saved yet.</p>
+                <div class="subjects-grid" id="subjects-grid">
+                    <!-- Cards injected by JS -->
                 </div>
+            </section>
+
+            <!-- CGPA Analysis -->
+            <section class="cgpa-section">
+                <div class="section-header">
+                    <h2 class="section-title">🎯 CGPA Summary</h2>
+                </div>
+                <div class="cgpa-card">
+                    <div class="cgpa-card-header">
+                        <span class="cgpa-card-title">Cumulative GPA</span>
+                        <div class="cgpa-badge" id="cgpa-badge">No Data</div>
+                    </div>
+                    <div class="cgpa-card-body">
+                        <div class="cgpa-main">
+                            <div class="cgpa-big" id="cgpa-display">—</div>
+                            <div class="cgpa-label">Out of 10.00</div>
+                        </div>
+                        <div class="cgpa-breakdown">
+                            <h3 class="breakdown-header">Subject Breakdown</h3>
+                            <div class="breakdown-table" id="cgpa-breakdown-table">
+                                <!-- Breakdown rows injected by JS -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="cgpa-progress-bar-wrap">
+                        <div class="cgpa-progress-bar" id="cgpa-progress-bar" style="width: 0%"></div>
+                    </div>
+                    <div class="cgpa-footer">
+                        Note: Grade points are based on 10-point brackets (e.g., 91-100 = 10 pts).
+                    </div>
+                </div>
+            </section>
+
+            <!-- History & Charts -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start;" class="history-grid">
+                <section class="chart-section">
+                    <div class="section-header">
+                        <h2 class="section-title">📈 GPA Trend</h2>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <span class="section-subtitle">Progress Overview</span>
+                            <button class="btn btn-ghost btn-sm" onclick="clearTrend()">Clear Trend</button>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="trend-chart"></canvas>
+                            <div id="chart-empty" class="chart-empty">
+                                <span>📊</span>
+                                <p>No trend data yet.<br>Save snapshots to track your GPA over time.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="history-section">
+                    <div class="section-header">
+                        <h2 class="section-title">📚 Semester History</h2>
+                        <button class="btn btn-primary btn-sm" onclick="addSemesterSnapshot()">Add Snapshot</button>
+                    </div>
+                    <div class="history-list" id="history-list">
+                        <div class="history-empty" id="history-empty">
+                            <div class="empty-icon">📂</div>
+                            <p>No semester snapshots saved yet.</p>
+                            <p class="text-muted">Click "Add Snapshot" to save the current CGPA to history.</p>
+                        </div>
+                    </div>
+                </section>
             </div>
-        </aside>
+        </div>
     </main>
 
-    <!-- Modal for Formulas -->
-    <div id="formula-modal" class="modal">
-        <div class="modal-content">
+    <!-- Modals -->
+    <div class="modal-overlay" id="reset-modal" hidden>
+        <div class="modal-card">
+            <div class="modal-icon">⚠️</div>
+            <h2 class="modal-title">Reset All Data?</h2>
+            <p class="modal-desc">This will permanently delete all your marks, attendance, and semester history. This action cannot be undone.</p>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeResetModal()">Cancel</button>
+                <button class="btn btn-danger" onclick="confirmReset()">Yes, Reset Everything</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="formula-modal" hidden>
+        <div class="modal-card formula-modal-card">
             <div class="modal-header">
-                <h2>Calculation Logic</h2>
-                <button onclick="closeFormulaModal()" class="close-btn">&times;</button>
+                <h2 class="modal-title">📐 Formula Reference</h2>
+                <button class="modal-close-btn" onclick="closeFormulaModal()">✕</button>
             </div>
-            <div class="modal-body">
-                <div class="formula-item">
-                    <strong>Point Logic:</strong>
-                    <code>Jx = INT((TotalMarks - 1) / 10) + 1</code>
+            <div class="formula-content">
+                <div class="formula-section">
+                    <h3>🎯 Attendance Marks</h3>
+                    <table class="formula-table">
+                        <thead><tr><th>Attendance %</th><th>Marks</th></tr></thead>
+                        <tbody>
+                            <tr><td>≥ 90%</td><td><span class="badge-green">5 pts</span></td></tr>
+                            <tr><td>85% - 89%</td><td><span class="badge-blue">4 pts</span></td></tr>
+                            <tr><td>80% - 84%</td><td><span class="badge-yellow">3 pts</span></td></tr>
+                            <tr><td>75% - 79%</td><td><span class="badge-orange">2 pts</span></td></tr>
+                            <tr><td>< 75%</td><td><span class="badge-red">0 pts</span></td></tr>
+                        </tbody>
+                    </table>
                 </div>
-                <div class="formula-item">
-                    <strong>Attendance (G):</strong>
-                    <p>≥90%: 5 | 85-89%: 4 | 80-84%: 3 | 75-79%: 2</p>
+                <div class="formula-section">
+                    <h3>📚 Subject Formulas</h3>
+                    <div class="formula-block">
+                        <span class="formula-label">BOCS & LTHTL</span>
+                        <code>Total Marks = ROUND((19/40) × (CA1+CA2+CA3) + (19/60) × (CA4+CA5) + AttMark, 2)</code>
+                    </div>
+                    <div class="formula-block">
+                        <span class="formula-label">BEWD & DBMS</span>
+                        <code>Total Marks = ROUND((95/3) × (CA1/40 + MAX(CA2,CA3)/40 + MAX(CA4,CA5)/60) + AttMark, 2)</code>
+                    </div>
+                    <div class="formula-block">
+                        <span class="formula-label">MERN</span>
+                        <code>Total Marks = ROUND((95/4) × (CA1/40 + CA2/40 + CA3/40 + MAX(CA4,CA5)/60) + AttMark, 2)</code>
+                    </div>
                 </div>
-                <div class="formula-item">
-                    <strong>BOCS/LTHTL:</strong>
-                    <code>(19/40)*(B+C+D) + (19/60)*(E+F) + G</code>
-                </div>
-                <div class="formula-item">
-                    <strong>BEWD/DBMS:</strong>
-                    <code>(95/3)*(B/40 + MAX(C,D)/40 + MAX(E,F)/60) + G</code>
+                <div class="formula-section">
+                    <h3>🎓 CGPA Formula</h3>
+                    <div class="formula-block">
+                        <span class="formula-label">Grade Point Mapping</span>
+                        <p>O (91-100) → 10 | A+ (81-90) → 9 | A (71-80) → 8 | B+ (61-70) → 7 | B (51-60) → 6 | C+ (41-50) → 5 | C (31-40) → 4 | F (≤30) → 0</p>
+                    </div>
+                    <div class="formula-block">
+                        <span class="formula-label">Weighted Average</span>
+                        <code>CGPA = ROUND(SUM(GradePoint × Credits) / 20, 2)</code>
+                    </div>
                 </div>
             </div>
+            <button class="btn btn-primary full-width" onclick="closeFormulaModal()">Got it</button>
         </div>
     </div>
 
     <div id="toast-container"></div>
+
+    <footer class="app-footer">
+        <div class="footer-content">
+            <span>&copy; 2026 Kalvium CGPA Dashboard</span>
+            <span class="footer-divider">|</span>
+            <span>Software Product Engineering</span>
+            <span class="footer-divider">|</span>
+            <span id="footer-time">May 2026</span>
+        </div>
+    </footer>
+
     <script src="app.js"></script>
-    <!-- v1.0.1 - Cache Reset -->
 </body>
 </html>
