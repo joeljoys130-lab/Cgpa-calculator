@@ -1,64 +1,115 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kalvium CGPA Calculator</title>
+    <title>Kalvium CGPA Dashboard</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Kalvium CGPA Calculator</h1>
-            <p class="subtitle">Semester 1 Marks Visualization & Calculation</p>
-        </header>
-
-        <main>
-            <div class="table-container">
-                <table id="marks-table">
-                    <thead>
-                        <tr>
-                            <th>Subject</th>
-                            <th>B-D <small>(CA1-3/40)</small></th>
-                            <th>E-F <small>(CA4-5/60)</small></th>
-                            <th>Att. %</th>
-                            <th>G <small>(Att.)</small></th>
-                            <th>H <small>(Cred)</small></th>
-                            <th>I <small>(Total)</small></th>
-                            <th>J <small>(GP)</small></th>
-                            <th>Grade</th>
-                        </tr>
-                    </thead>
-                    <tbody id="subjects-body">
-                        <!-- Rows injected by JS -->
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="summary-grid">
-                <div class="card result-card">
-                    <h2>Summary</h2>
-                    <div class="stat">
-                        <span class="label">Total Credits</span>
-                        <span class="value">20</span>
-                    </div>
-                    <div class="stat highlight">
-                        <span class="label">Overall CGPA</span>
-                        <span class="value" id="cgpa-value">0.00</span>
-                    </div>
-                    <p class="formula-note">Formula: ROUND(SUM(Ji * Hi) / 20, 2)</p>
-                </div>
-
-                <div class="card chart-card">
-                    <h2>Performance Analysis</h2>
-                    <div class="chart-container">
-                        <canvas id="marksChart"></canvas>
-                    </div>
+    <header class="app-header">
+        <div class="header-content container">
+            <div class="brand">
+                <div class="logo">K</div>
+                <div class="brand-text">
+                    <h1>Kalvium</h1>
+                    <span>CGPA Dashboard</span>
                 </div>
             </div>
-        </main>
+            <nav class="header-actions">
+                <button id="theme-toggle" class="icon-btn" onclick="toggleTheme()" title="Toggle Theme">☀️</button>
+                <button class="btn btn-outline" onclick="openFormulaModal()">📐 Formulas</button>
+                <button class="btn btn-danger" onclick="resetAll()">🔄 Reset</button>
+            </nav>
+        </div>
+    </header>
+
+    <div class="sticky-summary">
+        <div class="container summary-inner">
+            <div class="stat-group">
+                <div class="stat">
+                    <span class="label">CGPA</span>
+                    <span id="display-cgpa" class="value">—</span>
+                </div>
+                <div class="divider"></div>
+                <div class="stat">
+                    <span class="label">Total Credits</span>
+                    <span class="value">20</span>
+                </div>
+                <div class="divider"></div>
+                <div class="stat">
+                    <span class="label">Grade</span>
+                    <span id="display-grade" class="value">—</span>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="saveSnapshot()">💾 Save Snapshot</button>
+        </div>
     </div>
+
+    <main class="container main-layout">
+        <section class="subjects-section">
+            <div class="section-header">
+                <h2>Subject Wise Performance</h2>
+                <p>Enter your CA marks and attendance percentage below.</p>
+            </div>
+            <div id="subjects-grid" class="subjects-grid">
+                <!-- Cards injected by JS -->
+            </div>
+        </section>
+
+        <aside class="sidebar">
+            <div class="card chart-card">
+                <h3>Marks Distribution</h3>
+                <div class="chart-wrapper">
+                    <canvas id="radarChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card history-card">
+                <div class="card-header">
+                    <h3>Semester History</h3>
+                    <button class="btn-text" onclick="clearHistory()">Clear All</button>
+                </div>
+                <div id="history-list" class="history-list">
+                    <p class="empty-state">No snapshots saved yet.</p>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Modal for Formulas -->
+    <div id="formula-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Calculation Logic</h2>
+                <button onclick="closeFormulaModal()" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="formula-item">
+                    <strong>Point Logic:</strong>
+                    <code>Jx = INT((TotalMarks - 1) / 10) + 1</code>
+                </div>
+                <div class="formula-item">
+                    <strong>Attendance (G):</strong>
+                    <p>≥90%: 5 | 85-89%: 4 | 80-84%: 3 | 75-79%: 2</p>
+                </div>
+                <div class="formula-item">
+                    <strong>BOCS/LTHTL:</strong>
+                    <code>(19/40)*(B+C+D) + (19/60)*(E+F) + G</code>
+                </div>
+                <div class="formula-item">
+                    <strong>BEWD/DBMS:</strong>
+                    <code>(95/3)*(B/40 + MAX(C,D)/40 + MAX(E,F)/60) + G</code>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
     <script src="app.js"></script>
 </body>
 </html>
